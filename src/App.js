@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import "./App.css";
 import DiaryEditor from "./DiaryEditor";
 import DiaryList from "./DiaryList";
@@ -28,7 +28,7 @@ function App() {
     getData();
   }, []);
 
-  const onCreate = (author, content, emotion) => {
+  const onCreate = useCallback((author, content, emotion) => {
     const created_date = new Date().getTime();
     const newItem = {
       author,
@@ -38,26 +38,41 @@ function App() {
       id: dataId.current,
     };
     dataId.current++;
-    setData([newItem, ...data]);
-  };
+    // 함수형 업데이트
+    // setState 함수에 콜백함수를 전달하면
+    // deps를 비워도 콜백함수 인자를 통해 최신 state를 참조할 수 있음
+    setData((data) => [newItem, ...data]);
+  }, []);
 
-  const onRemove = (targetId) => {
+  const onRemove = useCallback((targetId) => {
     // 삭제: targetId 빼고 나머지만 필터링하여 새로운 배열
-    const newDiaryList = data.filter((el) => el.id !== targetId);
-    setData(newDiaryList);
-  };
+    setData((data) => data.filter((el) => el.id !== targetId));
+  }, []);
 
-  const onEdit = (targetId, newContent) => {
-    setData(
+  const onEdit = useCallback((targetId, newContent) => {
+    setData((data) =>
       data.map((el) =>
         el.id === targetId ? { ...el, content: newContent } : el
       )
     );
-  };
+  }, []);
+
+  const getDiaryAnalysis = useMemo(() => {
+    const goodCount = data.filter((el) => el.emotion >= 3).length;
+    const badCount = data.length - goodCount;
+    const goodRatio = (goodCount / data.length) * 100;
+    return { goodCount, badCount, goodRatio };
+  }, [data.length]);
+
+  const { goodCount, badCount, goodRatio } = getDiaryAnalysis;
 
   return (
     <div className="App">
       <DiaryEditor onCreate={onCreate} />
+      <div>전체 일기: {data.length}</div>
+      <div>기분좋은일기개수: {goodCount}</div>
+      <div>기분나쁜일기개수: {badCount}</div>
+      <div>기분좋은일기비율: {goodRatio}</div>
       <DiaryList onRemove={onRemove} onEdit={onEdit} diaryList={data} />
     </div>
   );
