@@ -1,10 +1,34 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useRef, useEffect, useMemo, useCallback, useReducer } from "react";
 import "./App.css";
 import DiaryEditor from "./DiaryEditor";
 import DiaryList from "./DiaryList";
 
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "INIT": {
+      return action.data;
+    }
+    case "CREATE": {
+      const created_date = new Date().getTime();
+      const newItem = { ...action.data, created_date };
+      return [newItem, ...state];
+    }
+    case "REMOVE": {
+      return state.filter((el) => el.id !== action.targetId);
+    }
+    case "EDIT": {
+      return state.map((el) =>
+        el.id === action.targetId ? { ...el, content: action.newContent } : el
+      );
+    }
+    default:
+      return state; // 기본값: 현재 state를 그대로 전달
+  }
+};
+
 function App() {
-  const [data, setData] = useState([]);
+  const [data, dispatch] = useReducer(reducer, []);
+
   const dataId = useRef(0);
 
   const getData = async () => {
@@ -21,7 +45,7 @@ function App() {
       };
     });
 
-    setData(initData);
+    dispatch({ type: "INIT", data: initData });
   };
 
   useEffect(() => {
@@ -29,32 +53,19 @@ function App() {
   }, []);
 
   const onCreate = useCallback((author, content, emotion) => {
-    const created_date = new Date().getTime();
-    const newItem = {
-      author,
-      content,
-      emotion,
-      created_date,
-      id: dataId.current,
-    };
+    dispatch({
+      type: "CREATE",
+      data: { author, content, emotion, id: dataId.current },
+    });
     dataId.current++;
-    // 함수형 업데이트
-    // setState 함수에 콜백함수를 전달하면
-    // deps를 비워도 콜백함수 인자를 통해 최신 state를 참조할 수 있음
-    setData((data) => [newItem, ...data]);
   }, []);
 
   const onRemove = useCallback((targetId) => {
-    // 삭제: targetId 빼고 나머지만 필터링하여 새로운 배열
-    setData((data) => data.filter((el) => el.id !== targetId));
+    dispatch({ type: "REMOVE", targetId });
   }, []);
 
   const onEdit = useCallback((targetId, newContent) => {
-    setData((data) =>
-      data.map((el) =>
-        el.id === targetId ? { ...el, content: newContent } : el
-      )
-    );
+    dispatch({ type: "EDIT", targetId, newContent });
   }, []);
 
   const getDiaryAnalysis = useMemo(() => {
