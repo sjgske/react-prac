@@ -1,4 +1,10 @@
-import { useRef, useEffect, useMemo, useCallback, useReducer } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+  useReducer,
+} from "react";
 import "./App.css";
 import DiaryEditor from "./DiaryEditor";
 import DiaryList from "./DiaryList";
@@ -25,6 +31,11 @@ const reducer = (state, action) => {
       return state; // 기본값: 현재 state를 그대로 전달
   }
 };
+
+// export default: 파일 하나당 하나밖에 못씀. 이름 바꿔서 import 가능
+// 그냥 export: 부가적인 기능. 이름 바꿀 수 없고 비구조화할당으로만 import 할 수 있음
+export const DiaryStateContext = React.createContext();
+export const DiaryDispatchContext = React.createContext();
 
 function App() {
   const [data, dispatch] = useReducer(reducer, []);
@@ -68,6 +79,10 @@ function App() {
     dispatch({ type: "EDIT", targetId, newContent });
   }, []);
 
+  const memoizedDispatches = useMemo(() => {
+    return { onCreate, onRemove, onEdit };
+  }, []);
+
   const getDiaryAnalysis = useMemo(() => {
     const goodCount = data.filter((el) => el.emotion >= 3).length;
     const badCount = data.length - goodCount;
@@ -78,14 +93,18 @@ function App() {
   const { goodCount, badCount, goodRatio } = getDiaryAnalysis;
 
   return (
-    <div className="App">
-      <DiaryEditor onCreate={onCreate} />
-      <div>전체 일기: {data.length}</div>
-      <div>기분좋은일기개수: {goodCount}</div>
-      <div>기분나쁜일기개수: {badCount}</div>
-      <div>기분좋은일기비율: {goodRatio}</div>
-      <DiaryList onRemove={onRemove} onEdit={onEdit} diaryList={data} />
-    </div>
+    <DiaryStateContext.Provider value={data}>
+      <DiaryDispatchContext.Provider value={memoizedDispatches}>
+        <div className="App">
+          <DiaryEditor />
+          <div>전체 일기: {data.length}</div>
+          <div>기분좋은일기개수: {goodCount}</div>
+          <div>기분나쁜일기개수: {badCount}</div>
+          <div>기분좋은일기비율: {goodRatio}</div>
+          <DiaryList />
+        </div>
+      </DiaryDispatchContext.Provider>
+    </DiaryStateContext.Provider>
   );
 }
 
